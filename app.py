@@ -12,35 +12,32 @@ from model_utils import get_yolo, color_picker_fn, get_system_stat
 from ultralytics import YOLO
 from st_login_form import login_form
 
+
 client = login_form()
 if st.session_state["authenticated"]:
     if st.session_state["username"]:
         st.success(f"Welcome {st.session_state['username']}")
-    else:
-        st.success("Welcome guest")
-else:
-    st.error("Not authenticated")
 
-p_time = 0
+        p_time = 0
 
-st.sidebar.title('Settings')
-# Choose the model
-# model_type = st.sidebar.selectbox(
-#     'Choose YOLO Model', ('YOLO Model', 'YOLOv8', 'YOLOv7')
-# )
+        st.sidebar.title('Settings')
+        # Choose the model
+        # model_type = st.sidebar.selectbox(
+        #     'Choose YOLO Model', ('YOLO Model', 'YOLOv8', 'YOLOv7')
+        # )
 
-st.title(f'Predictions')
-sample_img = cv2.imread('teapic.jpeg')
-FRAME_WINDOW = st.image(sample_img, channels='BGR')
-cap = None
+        st.title(f'Predictions')
+        sample_img = cv2.imread('teapic.jpeg')
+        FRAME_WINDOW = st.image(sample_img, channels='BGR')
+        cap = None
 
-# if not model_type == 'YOLO Model':
-    # path_model_file = st.sidebar.text_input(
-    #     f'path to {model_type} Model:',
-    #     f'eg: dir/{model_type}.pt'
-    # )
-    # if st.sidebar.checkbox('Load Model'):
-        
+        # if not model_type == 'YOLO Model':
+        # path_model_file = st.sidebar.text_input(
+        #     f'path to {model_type} Model:',
+        #     f'eg: dir/{model_type}.pt'
+        # )
+        # if st.sidebar.checkbox('Load Model'):
+
         # YOLOv7 Model
         # if model_type == 'YOLOv7':
         #     # GPU
@@ -63,127 +60,135 @@ cap = None
         # YOLOv8 Model
         # elif model_type == 'YOLOv8':
 
-model = YOLO('best.pt')
+        model = YOLO('best.pt')
 
-# Load Class names
-class_labels = model.names
+        # Load Class names
+        class_labels = model.names
 
-# Inference Mode
-options = st.sidebar.radio(
-    'Options:', ('Webcam', 'Image', 'Video', 'RTSP'), index=1)
+        # Inference Mode
+        options = st.sidebar.radio(
+            'Options:', ('Webcam', 'Image', 'Video', 'RTSP'), index=1)
 
-#tracker = st.sidebar.selectbox("Choose Tracker", ("Tracker", "bytetrack", "botsort"))
+        # tracker = st.sidebar.selectbox("Choose Tracker", ("Tracker", "bytetrack", "botsort"))
 
-# Confidence
-confidence = st.sidebar.slider(
-    'Detection Confidence', min_value=0.0, max_value=1.0, value=0.35)
+        # Confidence
+        confidence = st.sidebar.slider(
+            'Detection Confidence', min_value=0.0, max_value=1.0, value=0.35)
 
-# Draw thickness
-draw_thick = st.sidebar.slider(
-    'Draw Thickness:', min_value=1,
-    max_value=20, value=5
-)
-
-color_pick_list = []
-for i in range(len(class_labels)):
-    classname = class_labels[i]
-    color = color_picker_fn(classname, i)
-    color_pick_list.append(color)
-
-# Image
-if options == 'Image':
-    upload_img_file = st.sidebar.file_uploader(
-        'Upload Image', type=['jpg', 'jpeg', 'png'])
-    if upload_img_file is not None:
-        pred = st.checkbox(f'Predict Using myyolo')
-        file_bytes = np.asarray(
-            bytearray(upload_img_file.read()), dtype=np.uint8)
-        img = cv2.imdecode(file_bytes, 1)
-        FRAME_WINDOW.image(img, channels='BGR')
-
-        if pred:
-            img, current_no_class = get_yolo(
-                img, model, confidence,
-                color_pick_list, class_labels, draw_thick,
-                #Tracker=tracker
-            )
-            FRAME_WINDOW.image(img, channels='BGR')
-
-            # Current number of classes
-            class_fq = dict(Counter(i for sub in current_no_class for i in set(sub)))
-            class_fq = json.dumps(class_fq, indent = 4)
-            class_fq = json.loads(class_fq)
-            df_fq = pd.DataFrame(class_fq.items(), columns=['Class', 'Number'])
-
-            # Updating Inference results
-            with st.container():
-                st.markdown("<h2>Inference Statistics</h2>", unsafe_allow_html=True)
-                st.markdown("<h3>Detected objects in curret Frame</h3>", unsafe_allow_html=True)
-                st.dataframe(df_fq, use_container_width=True)
-
-# Video
-elif options == 'Video':
-    upload_video_file = st.sidebar.file_uploader(
-        'Upload Video', type=['mp4', 'avi', 'mkv'])
-    if upload_video_file is not None:
-        pred = st.checkbox(f'Predict Using moyolo')
-
-        tfile = tempfile.NamedTemporaryFile(delete=False)
-        tfile.write(upload_video_file.read())
-        cap = cv2.VideoCapture(tfile.name)
-        # if pred:
-
-
-# Web-cam
-elif options == 'Webcam':
-    cam_options = st.sidebar.selectbox('Webcam Channel',
-                                    ('Select Channel', '0', '1', '2', '3'))
-
-    if not cam_options == 'Select Channel':
-        pred = st.checkbox(f'Predict Using ')
-        cap = cv2.VideoCapture(int(cam_options))
-
-
-# RTSP
-elif options == 'RTSP':
-    rtsp_url = st.sidebar.text_input(
-        'RTSP URL:',
-        'eg: rtsp://admin:name6666@198.162.1.58/cam/realmonitor?channel=0&subtype=0'
-    )
-    pred = st.checkbox(f'Predict Using ')
-    cap = cv2.VideoCapture(rtsp_url)
-
-
-if (cap != None) and pred:
-    stframe1 = st.empty()
-    stframe2 = st.empty()
-    stframe3 = st.empty()
-    while True:
-        success, img = cap.read()
-        if not success:
-            st.error(
-                f"{options} NOT working\nCheck {options} properly!!",
-                icon="🚨"
-            )
-            break
-
-        img, current_no_class = get_yolo(
-            img, model, confidence,
-            color_pick_list, class_labels, draw_thick,
-            #Tracker=tracker
+        # Draw thickness
+        draw_thick = st.sidebar.slider(
+            'Draw Thickness:', min_value=1,
+            max_value=20, value=5
         )
-        FRAME_WINDOW.image(img, channels='BGR')
 
-        # FPS
-        c_time = time.time()
-        fps = 1 / (c_time - p_time)
-        p_time = c_time
-        
-        # Current number of classes
-        class_fq = dict(Counter(i for sub in current_no_class for i in set(sub)))
-        class_fq = json.dumps(class_fq, indent = 4)
-        class_fq = json.loads(class_fq)
-        df_fq = pd.DataFrame(class_fq.items(), columns=['Class', 'Number'])
-        
-        # Updating Inference results
-        get_system_stat(stframe1, stframe2, stframe3, fps, df_fq)
+        color_pick_list = []
+        for i in range(len(class_labels)):
+            classname = class_labels[i]
+            color = color_picker_fn(classname, i)
+            color_pick_list.append(color)
+
+        # Image
+        if options == 'Image':
+            upload_img_file = st.sidebar.file_uploader(
+                'Upload Image', type=['jpg', 'jpeg', 'png'])
+            if upload_img_file is not None:
+                pred = st.checkbox(f'Predict Using myyolo')
+                file_bytes = np.asarray(
+                    bytearray(upload_img_file.read()), dtype=np.uint8)
+                img = cv2.imdecode(file_bytes, 1)
+                FRAME_WINDOW.image(img, channels='BGR')
+
+                if pred:
+                    img, current_no_class = get_yolo(
+                        img, model, confidence,
+                        color_pick_list, class_labels, draw_thick,
+                        # Tracker=tracker
+                    )
+                    FRAME_WINDOW.image(img, channels='BGR')
+
+                    # Current number of classes
+                    class_fq = dict(Counter(i for sub in current_no_class for i in set(sub)))
+                    class_fq = json.dumps(class_fq, indent=4)
+                    class_fq = json.loads(class_fq)
+                    df_fq = pd.DataFrame(class_fq.items(), columns=['Class', 'Number'])
+
+                    # Updating Inference results
+                    with st.container():
+                        st.markdown("<h2>Inference Statistics</h2>", unsafe_allow_html=True)
+                        st.markdown("<h3>Detected objects in curret Frame</h3>", unsafe_allow_html=True)
+                        st.dataframe(df_fq, use_container_width=True)
+
+        # Video
+        elif options == 'Video':
+            upload_video_file = st.sidebar.file_uploader(
+                'Upload Video', type=['mp4', 'avi', 'mkv'])
+            if upload_video_file is not None:
+                pred = st.checkbox(f'Predict Using moyolo')
+
+                tfile = tempfile.NamedTemporaryFile(delete=False)
+                tfile.write(upload_video_file.read())
+                cap = cv2.VideoCapture(tfile.name)
+                # if pred:
+
+
+        # Web-cam
+        elif options == 'Webcam':
+            cam_options = st.sidebar.selectbox('Webcam Channel',
+                                               ('Select Channel', '0', '1', '2', '3'))
+
+            if not cam_options == 'Select Channel':
+                pred = st.checkbox(f'Predict Using ')
+                cap = cv2.VideoCapture(int(cam_options))
+
+
+        # RTSP
+        elif options == 'RTSP':
+            rtsp_url = st.sidebar.text_input(
+                'RTSP URL:',
+                'eg: rtsp://admin:name6666@198.162.1.58/cam/realmonitor?channel=0&subtype=0'
+            )
+            pred = st.checkbox(f'Predict Using ')
+            cap = cv2.VideoCapture(rtsp_url)
+
+        if (cap != None) and pred:
+            stframe1 = st.empty()
+            stframe2 = st.empty()
+            stframe3 = st.empty()
+            while True:
+                success, img = cap.read()
+                if not success:
+                    st.error(
+                        f"{options} NOT working\nCheck {options} properly!!",
+                        icon="🚨"
+                    )
+                    break
+
+                img, current_no_class = get_yolo(
+                    img, model, confidence,
+                    color_pick_list, class_labels, draw_thick,
+                    # Tracker=tracker
+                )
+                FRAME_WINDOW.image(img, channels='BGR')
+
+                # FPS
+                c_time = time.time()
+                fps = 1 / (c_time - p_time)
+                p_time = c_time
+
+                # Current number of classes
+                class_fq = dict(Counter(i for sub in current_no_class for i in set(sub)))
+                class_fq = json.dumps(class_fq, indent=4)
+                class_fq = json.loads(class_fq)
+                df_fq = pd.DataFrame(class_fq.items(), columns=['Class', 'Number'])
+
+                # Updating Inference results
+                get_system_stat(stframe1, stframe2, stframe3, fps, df_fq)
+
+
+
+
+
+    else:
+        st.success("Welcome guest")
+else:
+    st.error("Not authenticated")
